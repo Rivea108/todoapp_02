@@ -22,17 +22,34 @@ import {
 } from '@mui/material';
 import { ThemeProvider } from '@emotion/react';
 import classNames from 'classnames';
+import { RecoilRoot, atom, selector, useRecoilState, useRecoilValue } from 'recoil';
 import { FaBars, FaCheck, FaEllipsisH, FaTrash, FaEllipsisV } from 'react-icons/fa';
 import { FaPenToSquare } from 'react-icons/fa6';
 import dateToStr from './dateUtil';
 import RootTheme from './theme';
 
-function useTodoStatus() {
-  const [todos, setTodos] = React.useState([]);
-  const lastTodoIdRef = React.useRef(0);
+const todosAtom = atom({
+  key: 'app/todosAtom',
+  default: [],
+});
+
+const lastTodoIdAtom = atom({
+  key: 'app/lastTodoIdAtom',
+  default: 0,
+});
+
+function useTodosStatus() {
+  const [todos, setTodos] = useRecoilState(todosAtom); // 리코일 사용
+  // const [todos, setTodos] = React.useState([]);
+
+  const [lastTodoId, setLastTodoId] = useRecoilState(lastTodoIdAtom);
+  const lastTodoIdRef = React.useRef(lastTodoId);
+
+  lastTodoIdRef.current = lastTodoId;
 
   const addTodo = (newContent) => {
     const id = ++lastTodoIdRef.current;
+    setLastTodoId(id);
     const newTodo = {
       id,
       content: newContent,
@@ -90,7 +107,8 @@ function useTodoStatus() {
   };
 }
 
-const NewTodoForm = ({ todosStatus, noticeSnackbarStatus }) => {
+const NewTodoForm = ({ noticeSnackbarStatus }) => {
+  const todosStatus = useTodosStatus();
   const onSubmit = (e) => {
     e.preventDefault();
     const form = e.currentTarget;
@@ -125,7 +143,7 @@ const NewTodoForm = ({ todosStatus, noticeSnackbarStatus }) => {
     </>
   );
 };
-const TodoListItem = ({ todo, index, openDrawer, todosStatus }) => {
+const TodoListItem = ({ todo, index, openDrawer }) => {
   return (
     <>
       <li className="tw-mb-3" key={todo.id}>
@@ -204,7 +222,8 @@ function useEditTodoModalStatus() {
   };
 }
 
-function EditTodoModal({ status, todosStatus, todo, noticeSnackbarStatus }) {
+function EditTodoModal({ status, todo, noticeSnackbarStatus }) {
+  const todosStatus = useTodosStatus();
   const onSubmit = (e) => {
     e.preventDefault();
     const form = e.currentTarget;
@@ -251,7 +270,8 @@ function EditTodoModal({ status, todosStatus, todo, noticeSnackbarStatus }) {
   );
 }
 
-function TodoOptionDrawer({ status, todosStatus, noticeSnackbarStatus }) {
+function TodoOptionDrawer({ status, noticeSnackbarStatus }) {
+  const todosStatus = useTodosStatus();
   const removeTodo = () => {
     if (confirm(`${status.todoId}번 할 일을 삭제하시겠습니까?`) == false) {
       status.close();
@@ -301,7 +321,9 @@ function TodoOptionDrawer({ status, todosStatus, noticeSnackbarStatus }) {
   );
 }
 
-const TodoList = ({ todosStatus, noticeSnackbarStatus }) => {
+const TodoList = ({ noticeSnackbarStatus }) => {
+  const todosStatus = useTodosStatus();
+
   const todoOptionDrawerStatus = useTodoOptionDrawerStatus();
 
   return (
@@ -372,7 +394,7 @@ function useNoticeSnackbarStatus() {
 }
 
 function App() {
-  const todosStatus = useTodoStatus();
+  const todosStatus = useTodosStatus();
 
   const [open, setOpen] = React.useState(false);
 
@@ -406,8 +428,8 @@ function App() {
       </AppBar>
       <Toolbar />
       <NoticeSnackbar status={noticeSnackbarStatus} />
-      <NewTodoForm todosStatus={todosStatus} noticeSnackbarStatus={noticeSnackbarStatus} />
-      <TodoList todosStatus={todosStatus} noticeSnackbarStatus={noticeSnackbarStatus} />
+      <NewTodoForm noticeSnackbarStatus={noticeSnackbarStatus} />
+      <TodoList noticeSnackbarStatus={noticeSnackbarStatus} />
     </>
   );
 }
@@ -416,9 +438,11 @@ export default function themeApp() {
   const theme = RootTheme();
 
   return (
-    <ThemeProvider theme={theme}>
-      <CssBaseline />
-      <App />
-    </ThemeProvider>
+    <RecoilRoot>
+      <ThemeProvider theme={theme}>
+        <CssBaseline />
+        <App />
+      </ThemeProvider>
+    </RecoilRoot>
   );
 }
